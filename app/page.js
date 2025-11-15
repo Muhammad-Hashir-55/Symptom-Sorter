@@ -21,39 +21,42 @@ const ErrorDisplay = ({ message }) => (
 );
 
 // --- Enhanced Analysis Result --- //
-// --- Enhanced Analysis Result --- //
 const AnalysisResult = ({ analysis }) => {
-  // Extract sections using regex
+  // Extract sections using regex (FIXED FOR 4 SECTIONS)
   const conditionsBlock = analysis.match(/1\..*?(?=2\.)/s)?.[0] || "";
-  const stepsBlock = analysis.match(/2\..*?(?=3\.)/s)?.[0] || "";
-  const disclaimerBlock = analysis.match(/3\..*/s)?.[0] || "";
+  const quickActionsBlock = analysis.match(/2\..*?(?=3\.)/s)?.[0] || "";
+  const stepsBlock = analysis.match(/3\..*?(?=4\.)/s)?.[0] || "";
+  const disclaimerBlock = analysis.match(/4\..*/s)?.[0] || "";
 
   // Clean + split into bullet points
-  const cleanList = (block, min = 3, max = 5) => {
+  const cleanList = (block, min = 3, max = 6) => {
     let lines = block
       .split("\n")
-      .map((l) => l.replace(/^\d+\.|\-|\*/g, "").trim()) // remove numbering/bullets
+      .map((l) => l.replace(/^\d+\.|\-|\*/g, "").trim())
       .filter((l) => l.length > 0);
 
-    // Ensure at least min items, max items
     if (lines.length < min) {
       while (lines.length < min) lines.push("Not provided by AI");
     }
-    if (lines.length > max) {
-      lines = lines.slice(0, max);
-    }
+    if (lines.length > max) lines = lines.slice(0, max);
 
     return lines;
   };
 
-  const conditions = cleanList(conditionsBlock, 3, 5);
-  const steps = cleanList(stepsBlock, 2, 4);
+  const conditions = cleanList(conditionsBlock, 3, 8);
+  const quick = cleanList(quickActionsBlock, 2, 6);
+  const steps = cleanList(stepsBlock, 3, 5);
+
   const disclaimer =
-    disclaimerBlock.replace(/^3\.\s*/, "").trim() ||
-    "This information is for educational purposes only and is not a medical diagnosis. Please consult a healthcare professional for an accurate assessment.";
+    disclaimerBlock
+      .replace(/^4\.\s*/, "")
+      .replace(/^[“"]|[”"]$/g, "")
+      .trim() ||
+    "This information is for educational purposes only and does not constitute a medical diagnosis. Please consult a licensed healthcare provider for professional evaluation.";
 
   return (
     <div className="space-y-6">
+
       {/* Conditions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -79,6 +82,32 @@ const AnalysisResult = ({ analysis }) => {
         </ul>
       </motion.div>
 
+
+      {/* Quick Actions (NEW SECTION FIXED) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55 }}
+        className="bg-gray-800/60 p-6 rounded-xl shadow-lg border border-gray-700 backdrop-blur-md"
+      >
+        <h2 className="text-2xl font-bold text-yellow-300 flex items-center gap-2">
+          ⚡ Quick Actions
+        </h2>
+        <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-300">
+          {quick.map((q, i) => (
+            <motion.li
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              {q}
+            </motion.li>
+          ))}
+        </ul>
+      </motion.div>
+
+
       {/* Steps */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -103,6 +132,7 @@ const AnalysisResult = ({ analysis }) => {
           ))}
         </ul>
       </motion.div>
+
 
       {/* Disclaimer */}
       <motion.div
@@ -150,14 +180,17 @@ Input: Symptoms: "${input}"
 Your Output Must Include Only the Following Sections:
 
 1. 🧠 Possible Related Conditions
-List 7–8 plausible conditions that may be associated with the symptoms. Use medically accurate terminology and avoid alarmist language. Present them as possibilities, not certainties.
+List 7–8 plausible conditions associated with these symptoms.
 
-2. 👩‍⚕️ Recommended Next Steps
-Suggest 5 appropriate actions, focusing on which types of healthcare professionals the user should consider consulting (e.g., primary care physician, neurologist, dermatologist). Include brief reasoning for each recommendation.
+2. ⚡ Quick Actions
+Give simple, safe home-level steps (rest, hydration, compress, avoid triggers, etc.)
 
-3. ⚠️ Disclaimer
+3. 👩‍⚕️ Recommended Next Steps
+Suggest 5 appropriate actions with reasoning.
+
+4. ⚠️ Disclaimer
 "This information is for educational purposes only and does not constitute a medical diagnosis. Please consult a licensed healthcare provider for a professional evaluation."
-      `;
+`;
 
       const res = await fetch(
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
@@ -195,7 +228,6 @@ Suggest 5 appropriate actions, focusing on which types of healthcare professiona
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 sm:p-10 bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white font-sans">
       <div className="w-full max-w-3xl mx-auto space-y-10">
-        {/* Header */}
         <header className="text-center space-y-3">
           <h1 className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300 animate-pulse">
             Symptom Sorter AI
@@ -205,7 +237,6 @@ Suggest 5 appropriate actions, focusing on which types of healthcare professiona
           </p>
         </header>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="bg-gray-800/50 backdrop-blur-lg p-6 rounded-xl border border-gray-700 shadow-lg space-y-6"
@@ -228,7 +259,6 @@ Suggest 5 appropriate actions, focusing on which types of healthcare professiona
           </button>
         </form>
 
-        {/* Results */}
         <section className="min-h-[150px] space-y-6">
           {isLoading && <LoadingSpinner />}
           {error && <ErrorDisplay message={error} />}
